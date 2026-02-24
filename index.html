@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>The everything app · universal chat</title>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- External stylesheet -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Offline indicator (hidden by default) -->
+    <div id="offlineIndicator" class="offline-indicator hidden">
+        <i class="fas fa-wifi-slash"></i> You're offline. Messages will be sent when you reconnect.
+    </div>
+
+    <!-- Main app container – using flex for dynamic sizing -->
+    <div class="app-container">
+        <!-- LEFT SIDEBAR – collapsible, swipeable -->
+        <div class="sidebar" id="sidebar" data-swipeable="true">
+            <div class="sidebar-header">
+                <h1>⚡ everything</h1>
+                <div class="sub">chat · social · features</div>
+                <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme"><i class="fas fa-moon"></i></button>
+            </div>
+
+            <!-- Navbar inside sidebar for mobile (but we'll have a global navbar later) – keeping tabs -->
+            <div class="tab-bar" role="tablist">
+                <button class="tab active" data-tab="chats" role="tab" aria-selected="true"><i class="fas fa-comment"></i> Chats</button>
+                <button class="tab" data-tab="contacts" role="tab" aria-selected="false"><i class="fas fa-users"></i> Contacts</button>
+                <button class="tab" data-tab="features" role="tab" aria-selected="false"><i class="fas fa-cube"></i> Features</button>
+            </div>
+
+            <!-- Search bar -->
+            <div class="search-bar">
+                <i class="fas fa-search"></i>
+                <input type="text" id="contactSearch" placeholder="Search users..." aria-label="Search contacts">
+            </div>
+
+            <!-- Dynamic panels -->
+            <div class="sidebar-content" id="sidebarContent">
+                <!-- CHATS PANEL -->
+                <div id="chatsPanel" class="panel" role="tabpanel">
+                    <div class="section-title">Recent chats</div>
+                    <div id="recentChatsList" class="chat-list"></div>
+                </div>
+
+                <!-- CONTACTS PANEL -->
+                <div id="contactsPanel" class="panel hidden" role="tabpanel">
+                    <div class="section-title">Online</div>
+                    <div id="onlineUsersList" class="user-list"></div>
+                    <div class="section-title">Offline</div>
+                    <div id="offlineUsersList" class="user-list"></div>
+                </div>
+
+                <!-- FEATURES PANEL -->
+                <div id="featuresPanel" class="panel hidden" role="tabpanel">
+                    <div class="feature-tree" id="featureTree"></div>
+                </div>
+            </div>
+
+            <!-- Current user info (sidebar footer) with edit option -->
+            <div class="sidebar-footer">
+                <div class="current-user" id="currentUserInfo">
+                    <div class="user-avatar" id="currentUserAvatar">?</div>
+                    <div class="user-details">
+                        <span class="user-name" id="currentUserDisplayName">Anonymous</span>
+                        <span class="user-status" id="currentUserStatus">online</span>
+                    </div>
+                    <i class="fas fa-ellipsis-h" id="userMenuToggle" aria-label="User menu"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN CHAT AREA -->
+        <div class="main" id="mainChat">
+            <!-- Top Navbar with categorized settings -->
+            <div class="navbar">
+                <div class="navbar-left">
+                    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar"><i class="fas fa-bars"></i></button>
+                    <h2 id="chatWith">Select a chat</h2>
+                </div>
+                <div class="navbar-center">
+                    <span class="status" id="chatStatus"><span class="badge-online"></span> online</span>
+                </div>
+                <div class="navbar-right">
+                    <div class="dropdown" id="settingsDropdown">
+                        <button class="icon-btn" aria-label="Settings"><i class="fas fa-cog"></i></button>
+                        <div class="dropdown-menu hidden">
+                            <div class="dropdown-section">
+                                <h4>Theme</h4>
+                                <select id="themeSelect">
+                                    <option value="light">Light</option>
+                                    <option value="dark">Dark</option>
+                                    <option value="auto">Auto</option>
+                                </select>
+                            </div>
+                            <div class="dropdown-section">
+                                <h4>Notifications</h4>
+                                <label class="switch">
+                                    <input type="checkbox" id="notificationsToggle" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="dropdown-section">
+                                <h4>Sound</h4>
+                                <label class="switch">
+                                    <input type="checkbox" id="soundToggle" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="dropdown-section">
+                                <h4>Save history</h4>
+                                <label class="switch">
+                                    <input type="checkbox" id="historyToggle" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="icon-btn" id="rightPanelToggle" aria-label="Toggle profile"><i class="fas fa-user"></i></button>
+                </div>
+            </div>
+
+            <!-- Reply preview bar (hidden initially) -->
+            <div id="replyPreview" class="reply-preview hidden">
+                <div class="reply-content">
+                    <i class="fas fa-reply"></i>
+                    <span id="replyText">Replying to message...</span>
+                </div>
+                <button class="cancel-reply" id="cancelReply" aria-label="Cancel reply"><i class="fas fa-times"></i></button>
+            </div>
+
+            <!-- Message container -->
+            <div id="messageContainer" class="message-container" role="log" aria-live="polite"></div>
+
+            <!-- Typing indicator -->
+            <div id="typingIndicator" class="typing-indicator hidden">
+                <span></span><span></span><span></span> typing...
+            </div>
+
+            <!-- Input area -->
+            <div class="input-area">
+                <div class="input-wrapper">
+                    <button class="input-icon" id="attachBtn" aria-label="Attach file"><i class="fas fa-paperclip"></i></button>
+                    <button class="input-icon" id="emojiBtn" aria-label="Choose emoji"><i class="far fa-smile"></i></button>
+                    <button class="input-icon" id="voiceBtn" aria-label="Voice message"><i class="fas fa-microphone"></i></button>
+                    <input type="text" id="messageInput" placeholder="Type a message..." aria-label="Message">
+                </div>
+                <button id="sendBtn" aria-label="Send message"><i class="fas fa-paper-plane"></i> Send</button>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL – PROFILE & SETTINGS (collapsible, swipeable) -->
+        <div class="right-panel" id="rightPanel" data-swipeable="true">
+            <div class="profile-card">
+                <div class="profile-avatar" id="profileAvatar">?</div>
+                <div class="profile-name" id="profileName">Anonymous</div>
+                <div class="profile-bio" id="profileBio" contenteditable="false">Hey there! I'm using The everything app.</div>
+                <button class="edit-profile-btn" id="editProfileBtn" aria-label="Edit profile"><i class="fas fa-edit"></i> Edit</button>
+            </div>
+
+            <!-- Name input – hidden after name is set (will be toggled by JS) -->
+            <div class="profile-input" id="nameInputContainer">
+                <input type="text" id="nameInput" placeholder="Display name" aria-label="Change display name">
+                <button id="setNameBtn" aria-label="Update name">Update</button>
+            </div>
+
+            <hr>
+
+            <!-- Collapsible sections -->
+            <div class="collapsible-section">
+                <div class="section-header" data-toggle="collapse" data-target="#profileSettings">
+                    <h4>Profile Settings <i class="fas fa-chevron-down"></i></h4>
+                </div>
+                <div id="profileSettings" class="collapse-content">
+                    <div class="setting-item">
+                        <span>Status</span>
+                        <select id="statusSelect">
+                            <option value="online">Online</option>
+                            <option value="away">Away</option>
+                            <option value="busy">Busy</option>
+                            <option value="offline">Offline</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="collapsible-section">
+                <div class="section-header" data-toggle="collapse" data-target="#privacySettings">
+                    <h4>Privacy <i class="fas fa-chevron-down"></i></h4>
+                </div>
+                <div id="privacySettings" class="collapse-content">
+                    <div class="setting-item">
+                        <span>Read receipts</span>
+                        <label class="switch">
+                            <input type="checkbox" id="readReceiptsToggle" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <span>Typing indicator</span>
+                        <label class="switch">
+                            <input type="checkbox" id="typingIndicatorToggle" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <hr>
+
+            <div class="profile-meta">
+                <p><i class="fas fa-shield-alt"></i> End-to-end encrypted</p>
+                <p><i class="fas fa-cloud"></i> Cloud sync</p>
+                <p><i class="fas fa-star"></i> Premium features</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- HIDDEN MODALS -->
+    <div id="emojiPickerModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Emoji picker">
+        <div class="modal-content">
+            <button class="close-modal" aria-label="Close">&times;</button>
+            <div class="emoji-grid" id="emojiGrid"></div>
+        </div>
+    </div>
+
+    <div id="mediaPreviewModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Media preview">
+        <div class="modal-content">
+            <button class="close-modal" aria-label="Close">&times;</button>
+            <div id="mediaPreviewContent"></div>
+        </div>
+    </div>
+
+    <div id="userProfileModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="User profile">
+        <div class="modal-content">
+            <button class="close-modal" aria-label="Close">&times;</button>
+            <div class="user-profile-detail"></div>
+        </div>
+    </div>
+
+    <!-- External JavaScript -->
+    <script src="script.js"></script>
+</body>
+</html>
